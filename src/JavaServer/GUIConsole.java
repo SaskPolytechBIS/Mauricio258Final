@@ -41,20 +41,46 @@ public class GUIConsole extends JFrame implements ChatIF {
         setLayout(new BorderLayout(5, 5));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        JPanel bottom = new JPanel();
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         add("Center", new JScrollPane(messageList)); // Scrollable message area
-        add("South", bottom);
+        add("South", mainPanel);
 
-        bottom.setLayout(new GridLayout(8, 2, 5, 5));
-        bottom.add(hostLB); bottom.add(hostTxF);
-        bottom.add(portLB); bottom.add(portTxF);
-        bottom.add(loginLB); bottom.add(loginTxF);
-        bottom.add(messageLB); bottom.add(messageTxF);
-        bottom.add(new JLabel("User List: ", JLabel.RIGHT)); bottom.add(userList);
-        bottom.add(pmB); bottom.add(sendB);
-        bottom.add(openB); bottom.add(closeB);
-        bottom.add(browseB); bottom.add(saveB);
-        bottom.add(quitB);
+        JPanel row1 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row1.add(hostLB); row1.add(hostTxF);
+        mainPanel.add(row1);
+
+        JPanel row2 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row2.add(portLB); row2.add(portTxF);
+        mainPanel.add(row2);
+
+        JPanel row3 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row3.add(loginLB); row3.add(loginTxF);
+        mainPanel.add(row3);
+
+        JPanel row4 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row4.add(messageLB); row4.add(messageTxF);
+        mainPanel.add(row4);
+
+        JPanel row5 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row5.add(new JLabel("User List: ", JLabel.RIGHT)); row5.add(userList);
+        mainPanel.add(row5);
+
+        JPanel row6 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row6.add(pmB); row6.add(sendB);
+        mainPanel.add(row6);
+
+        JPanel row7 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row7.add(openB); row7.add(closeB);
+        mainPanel.add(row7);
+
+        JPanel row8 = new JPanel(new GridLayout(1, 2, 5, 5));
+        row8.add(browseB); row8.add(saveB);
+        mainPanel.add(row8);
+
+        JPanel row9 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        row9.add(quitB);
+        mainPanel.add(row9);
 
         setVisible(true);
 
@@ -65,8 +91,7 @@ public class GUIConsole extends JFrame implements ChatIF {
         quitB.addActionListener(e -> System.exit(0));
         browseB.addActionListener(e -> browseFile());
         saveB.addActionListener(e -> saveFileToServer());
-        pmB.addActionListener(e -> sendPrivateMessage());
-    }
+        pmB.addActionListener(e -> sendPrivateMessage());}
 
     // Display method required by ChatIF
     public void display(String message) {
