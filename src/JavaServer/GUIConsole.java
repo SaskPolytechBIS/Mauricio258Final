@@ -3,28 +3,36 @@ package JavaServer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class GUIConsole extends JFrame implements ChatIF {
     // GUI components
-    private JButton closeB = new JButton("Close");
-    private JButton openB = new JButton("Open");
+    private JButton closeB = new JButton("Logoff");
+    private JButton openB = new JButton("Login");
     private JButton sendB = new JButton("Send");
     private JButton quitB = new JButton("Quit");
-    private JButton loginB = new JButton("Login");
+    private JButton browseB = new JButton("Browse");
+    private JButton saveB = new JButton("Save");
+    private JButton pmB = new JButton("PM");
 
     private JTextField portTxF = new JTextField("5555");
-    private JTextField hostTxF = new JTextField("127.0.0.1");
+    private JTextField hostTxF = new JTextField("localhost");
     private JTextField messageTxF = new JTextField("");
-    private JTextField loginTxF = new JTextField("");
+    private JTextField loginTxF = new JTextField("guest");
+    private JTextField fileTxF = new JTextField("No file selected");
 
     private JLabel portLB = new JLabel("Port: ", JLabel.RIGHT);
     private JLabel hostLB = new JLabel("Host: ", JLabel.RIGHT);
+    private JLabel loginLB = new JLabel("User Id: ", JLabel.RIGHT);
     private JLabel messageLB = new JLabel("Message: ", JLabel.RIGHT);
-    private JLabel loginLB = new JLabel("Username: ", JLabel.RIGHT);
+    private JLabel fileLB = new JLabel("File: ", JLabel.RIGHT);
 
     private JTextArea messageList = new JTextArea();
+    private JComboBox<String> userList = new JComboBox<>();
     private ChatClient client; // ChatClient instance
+    private File selectedFile; // Store selected file
 
     // Constructor
     public GUIConsole() {
@@ -37,23 +45,27 @@ public class GUIConsole extends JFrame implements ChatIF {
         add("Center", new JScrollPane(messageList)); // Scrollable message area
         add("South", bottom);
 
-        bottom.setLayout(new GridLayout(6, 2, 5, 5));
+        bottom.setLayout(new GridLayout(8, 2, 5, 5));
         bottom.add(hostLB); bottom.add(hostTxF);
         bottom.add(portLB); bottom.add(portTxF);
         bottom.add(loginLB); bottom.add(loginTxF);
         bottom.add(messageLB); bottom.add(messageTxF);
-        bottom.add(openB); bottom.add(sendB);
-        bottom.add(closeB); bottom.add(quitB);
-        bottom.add(loginB);
+        bottom.add(new JLabel("User List: ", JLabel.RIGHT)); bottom.add(userList);
+        bottom.add(pmB); bottom.add(sendB);
+        bottom.add(openB); bottom.add(closeB);
+        bottom.add(browseB); bottom.add(saveB);
+        bottom.add(quitB);
 
         setVisible(true);
 
         // Action Listeners
-        openB.addActionListener(e -> openConnection());
+        openB.addActionListener(e -> sendLogin());
         closeB.addActionListener(e -> closeConnection());
         sendB.addActionListener(e -> sendMessage());
         quitB.addActionListener(e -> System.exit(0));
-        loginB.addActionListener(e -> sendLogin());
+        browseB.addActionListener(e -> browseFile());
+        saveB.addActionListener(e -> saveFileToServer());
+        pmB.addActionListener(e -> sendPrivateMessage());
     }
 
     // Display method required by ChatIF
@@ -61,15 +73,49 @@ public class GUIConsole extends JFrame implements ChatIF {
         messageList.append(message + "\n");
     }
 
-    // Open a connection to the server
-    private void openConnection() {
+    // Browse for a file
+    private void browseFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        int returnValue = fileChooser.showOpenDialog(this);
+        if (returnValue == JFileChooser.APPROVE_OPTION) {
+            selectedFile = fileChooser.getSelectedFile();
+            fileTxF.setText(selectedFile.getAbsolutePath());
+        }
+    }
+
+    // Save file to server
+    private void saveFileToServer() {
+        if (client != null && client.isConnected() && selectedFile != null) {
+            try {
+                byte[] fileBytes = Files.readAllBytes(Paths.get(selectedFile.getAbsolutePath()));
+                Envelope env = new Envelope("saveFile", selectedFile.getName(), fileBytes);
+                client.sendToServer(env);
+                display("File " + selectedFile.getName() + " sent to server.");
+            } catch (IOException e) {
+                display("Error: Could not read file.");
+            }
+        } else {
+            display("Error: No file selected or not connected to a server.");
+        }
+    }
+
+    // Send a login command to the server
+    private void sendLogin() {
         if (client == null || !client.isConnected()) {
             try {
-                String host = hostTxF.getText();
-                int port = Integer.parseInt(portTxF.getText());
-                client = new ChatClient(host, port, this); // Pass GUIConsole (ChatIF)
+                String host = hostTxF.getText().trim();
+                int port = Integer.parseInt(portTxF.getText().trim());
+                client = new ChatClient(host, port, this);
                 client.openConnection();
-                display("Connected to server at " + host + ":" + port);
+
+                String userId = loginTxF.getText().trim();
+                if (!userId.isEmpty()) {
+                    Envelope env = new Envelope("login", null, userId);
+                    client.sendToServer(env);
+                    display("Logged in as: " + userId);
+                } else {
+                    display("Enter a username to log in.");
+                }
             } catch (IOException e) {
                 display("Error: Could not connect to server.");
             }
@@ -78,7 +124,7 @@ public class GUIConsole extends JFrame implements ChatIF {
         }
     }
 
-    // Close the connection
+    // Close the connection to the server
     private void closeConnection() {
         if (client != null && client.isConnected()) {
             try {
@@ -105,19 +151,22 @@ public class GUIConsole extends JFrame implements ChatIF {
         }
     }
 
-    // Send a login command to the server
-    private void sendLogin() {
+    // Send a private message
+    private void sendPrivateMessage() {
         if (client != null && client.isConnected()) {
-            String userId = loginTxF.getText().trim();
-            if (!userId.isEmpty()) {
-                Envelope env = new Envelope("login", null, userId);
+            String targetUser = (String) userList.getSelectedItem();
+            String msg = messageTxF.getText().trim();
+            
+            if (targetUser != null && !msg.isEmpty()) {
+                Envelope env = new Envelope("pm", targetUser, msg);
                 try {
                     client.sendToServer(env);
+                    display("You (PM to " + targetUser + "): " + msg);
                 } catch (IOException e) {
-                    display("Error: Could not send login request.");
+                    display("Error: Could not send private message.");
                 }
             } else {
-                display("Enter a username to log in.");
+                display("Select a user and enter a message to send a PM.");
             }
         } else {
             display("Error: Not connected to a server.");

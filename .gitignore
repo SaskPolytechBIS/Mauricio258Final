@@ -3,10 +3,10 @@
 /build/
 
 # IDE and OS-specific files
-/.nbproject/private/
+/nbproject/private/
 /*.class
-/.DS_Store
-/.idea/
+/DS_Store
+/idea/
 /*.iml
 
 # Temporary files
