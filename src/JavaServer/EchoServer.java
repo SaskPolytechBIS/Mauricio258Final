@@ -1,6 +1,7 @@
 package JavaServer;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 
 
@@ -56,7 +57,44 @@ public class EchoServer extends AbstractServer {
     
     public void handleClientCommand(Envelope env, ConnectionToClient client)
     {
-        if (env.getName().equals("saveFile")) {
+        if (env.getName().equals("ftplist")) { // Send list of uploaded files
+            File folder = new File("uploads");
+            String[] fileList = folder.list();
+
+            if (fileList == null) {
+                fileList = new String[]{}; // Empty array if folder does not exist
+            }
+
+            try {
+                client.sendToClient(new Envelope("ftplist", null, fileList));
+            } catch (IOException e) {
+                System.out.println("Error sending file list to client.");
+            }
+        }
+
+        if (env.getName().equals("ftpget")) { // Send requested file to client
+            String fileName = env.getArg();
+            File fileToSend = new File("uploads", fileName);
+
+            if (!fileToSend.exists()) {
+                try {
+                    client.sendToClient(new Envelope("ftpget", fileName, "Error: File not found."));
+                } catch (IOException e) {
+                    System.out.println("Error sending file not found message.");
+                }
+                return;
+            }
+
+            try {
+                byte[] fileData = Files.readAllBytes(fileToSend.toPath());
+                client.sendToClient(new Envelope("ftpget", fileName, fileData));
+                System.out.println("File sent: " + fileName);
+            } catch (IOException e) {
+                System.out.println("Error reading or sending file: " + e.getMessage());
+            }
+        }
+        
+        if (env.getName().equals("ftpUpload")) {
             String fileName = env.getArg();
             byte[] fileData = (byte[]) env.getMsg();
 

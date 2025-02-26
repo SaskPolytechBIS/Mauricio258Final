@@ -3,6 +3,7 @@ package JavaServer;
 
 import java.io.*;
 import java.util.ArrayList;
+import javax.swing.SwingUtilities;
 
 /**
  * This class overrides some of the methods defined in the abstract superclass
@@ -48,9 +49,42 @@ public class ChatClient extends AbstractClient {
             clientUI.display(msg.toString());
         }
     }
+
     
     public void handleServerCommand(Envelope env)
     {
+        if (env.getName().equals("ftplist")) {
+            String[] files = (String[]) env.getMsg();
+            
+            // Populate the combo box in GUIConsole
+            SwingUtilities.invokeLater(() -> {
+                GUIConsole gui = (GUIConsole) clientUI;
+                gui.updateFileList(files);
+            });
+        }
+        
+        if (env.getName().equals("ftpget")) {
+            String fileName = env.getArg();
+            Object data = env.getMsg();
+
+            if (data instanceof String) {
+                clientUI.display((String) data); // Display error message if any
+                return;
+            }
+
+            byte[] fileData = (byte[]) data;
+            File downloadFolder = new File("downloads");
+            downloadFolder.mkdirs(); // Ensure downloads folder exists
+
+            File downloadedFile = new File(downloadFolder, fileName);
+            try (FileOutputStream fos = new FileOutputStream(downloadedFile)) {
+                fos.write(fileData);
+                clientUI.display("File downloaded: " + fileName);
+            } catch (IOException e) {
+                clientUI.display("Error saving downloaded file.");
+            }
+        }
+            
         if(env.getName().equals("who"))
         {
             ArrayList<String> clientsInRoom = (ArrayList<String>) env.getMsg();

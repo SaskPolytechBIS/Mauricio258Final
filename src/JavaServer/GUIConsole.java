@@ -16,6 +16,8 @@ public class GUIConsole extends JFrame implements ChatIF {
     private JButton browseB = new JButton("Browse");
     private JButton saveB = new JButton("Save");
     private JButton pmB = new JButton("PM");
+    private JButton refreshB = new JButton("Refresh List");
+    private JButton downloadB = new JButton("Download");
 
     private JTextField portTxF = new JTextField("5555");
     private JTextField hostTxF = new JTextField("localhost");
@@ -33,6 +35,7 @@ public class GUIConsole extends JFrame implements ChatIF {
     private JComboBox<String> userList = new JComboBox<>();
     private ChatClient client; // ChatClient instance
     private File selectedFile; // Store selected file
+    private JComboBox<String> fileListCombo = new JComboBox<>();
 
     // Constructor
     public GUIConsole() {
@@ -78,10 +81,23 @@ public class GUIConsole extends JFrame implements ChatIF {
         row8.add(browseB); row8.add(saveB);
         mainPanel.add(row8);
 
-        JPanel row9 = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        row9.add(quitB);
+        // Add file list row (Row 9)
+        JPanel row9 = new JPanel(new GridLayout(1, 3, 5, 5));
+        row9.add(new JLabel("Files:", JLabel.RIGHT));
+        row9.add(fileListCombo);
+        row9.add(refreshB);
         mainPanel.add(row9);
 
+        // Add download button row (Row 10)
+        JPanel row10 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        row10.add(downloadB);
+        mainPanel.add(row10);
+
+        // Add Quit button row (Row 11)
+        JPanel row11 = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        row11.add(quitB);
+        mainPanel.add(row11);
+        
         setVisible(true);
 
         // Action Listeners
@@ -91,11 +107,22 @@ public class GUIConsole extends JFrame implements ChatIF {
         quitB.addActionListener(e -> System.exit(0));
         browseB.addActionListener(e -> browseFile());
         saveB.addActionListener(e -> saveFileToServer());
-        pmB.addActionListener(e -> sendPrivateMessage());}
+        pmB.addActionListener(e -> sendPrivateMessage());
+        refreshB.addActionListener(e -> requestFileList());
+        downloadB.addActionListener(e -> downloadSelectedFile());
+    }
 
     // Display method required by ChatIF
     public void display(String message) {
         messageList.append(message + "\n");
+    }
+
+    public void updateFileList(String[] files) {
+        fileListCombo.removeAllItems();
+        for (String file : files) {
+            fileListCombo.addItem(file);
+        }
+        display("File list updated.");
     }
 
     // Browse for a file
@@ -113,7 +140,7 @@ public class GUIConsole extends JFrame implements ChatIF {
         if (client != null && client.isConnected() && selectedFile != null) {
             try {
                 byte[] fileBytes = Files.readAllBytes(Paths.get(selectedFile.getAbsolutePath()));
-                Envelope env = new Envelope("saveFile", selectedFile.getName(), fileBytes);
+                Envelope env = new Envelope("ftpUpload", selectedFile.getName(), fileBytes);
                 client.sendToServer(env);
                 display("File " + selectedFile.getName() + " sent to server.");
             } catch (IOException e) {
@@ -123,7 +150,39 @@ public class GUIConsole extends JFrame implements ChatIF {
             display("Error: No file selected or not connected to a server.");
         }
     }
-
+    
+    private void requestFileList() {
+        if (client != null && client.isConnected()) {
+            try {
+                Envelope env = new Envelope("ftplist", null, null);
+                client.sendToServer(env);
+            } catch (IOException e) {
+                display("Error: Could not request file list.");
+            }
+        } else {
+            display("Not connected to server.");
+        }
+    }
+    
+    private void downloadSelectedFile() {
+        if (client != null && client.isConnected()) {
+            String selectedFile = (String) fileListCombo.getSelectedItem();
+            if (selectedFile != null) {
+                try {
+                    Envelope env = new Envelope("ftpget", selectedFile, null);
+                    client.sendToServer(env);
+                    display("Requesting file: " + selectedFile);
+                } catch (IOException e) {
+                    display("Error: Could not request file.");
+                }
+            } else {
+                display("No file selected.");
+            }
+        } else {
+            display("Not connected to server.");
+        }
+    }
+    
     // Send a login command to the server
     private void sendLogin() {
         if (client == null || !client.isConnected()) {
