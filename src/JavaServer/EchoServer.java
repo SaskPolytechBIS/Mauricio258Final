@@ -1,6 +1,6 @@
 package JavaServer;
 
-
+import java.io.*;
 import java.util.ArrayList;
 
 
@@ -11,7 +11,7 @@ public class EchoServer extends AbstractServer {
      * The default port to listen on.
      */
     final public static int DEFAULT_PORT = 5555;
-
+    private static final String FILE_STORAGE_DIR = "uploads";
     //Constructors ****************************************************
     /**
      * Constructs an instance of the echo server.
@@ -19,9 +19,13 @@ public class EchoServer extends AbstractServer {
      * @param port The port number to connect on.
      */
     public EchoServer(int port) {
-
         super(port);
-
+        
+        File storageDir = new File(FILE_STORAGE_DIR);
+        if (!storageDir.exists()) {
+            storageDir.mkdir();
+        }
+        
         try {
             this.listen(); //Start listening for connections
         } catch (Exception ex) {
@@ -52,6 +56,30 @@ public class EchoServer extends AbstractServer {
     
     public void handleClientCommand(Envelope env, ConnectionToClient client)
     {
+        if (env.getName().equals("saveFile")) {
+            String fileName = env.getArg();
+            byte[] fileData = (byte[]) env.getMsg();
+
+            try {
+                File receivedFile = new File("uploads", fileName);
+                receivedFile.getParentFile().mkdirs(); // Ensure directory exists
+                FileOutputStream fileOutputStream = new FileOutputStream(receivedFile);
+                fileOutputStream.write(fileData);
+                fileOutputStream.close();
+
+                System.out.println("File received: " + fileName);
+
+                client.sendToClient("File " + fileName + " saved successfully.");
+            } catch (IOException e) {
+                System.out.println("Error saving file: " + e.getMessage());
+                try {
+                    client.sendToClient("Error saving file.");
+                } catch (IOException ex) {
+                    System.out.println("Error sending failure message to client.");
+                }
+            }
+        }
+        
         if(env.getName().equals("login"))
         {
             client.setInfo("userId", env.getMsg());
