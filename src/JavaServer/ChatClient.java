@@ -294,8 +294,6 @@ public class ChatClient extends AbstractClient {
             } else 
                 clientUI.display("You must be connected to a server to perform this command");
         }
-        
-        clientUI.display("Invalid command: " + message);
     }
 }
 //End of ChatClient class

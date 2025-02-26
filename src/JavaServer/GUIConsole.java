@@ -113,7 +113,6 @@ public class GUIConsole extends JFrame implements ChatIF {
                 Envelope env = new Envelope("login", null, userId);
                 try {
                     client.sendToServer(env);
-                    display("Logged in as " + userId);
                 } catch (IOException e) {
                     display("Error: Could not send login request.");
                 }
